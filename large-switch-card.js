@@ -9,6 +9,11 @@ class LargeSwitchCard extends HTMLElement {
             throw new Error('You need to define an entity');
         }
         this.config = config;
+        // Set default climate modes if not provided
+        if (this.config.entity.startsWith('climate.') && (!this.config.climate_on_mode || !this.config.climate_off_mode)) {
+            this.config.climate_on_mode = this.config.climate_on_mode || 'heat';
+            this.config.climate_off_mode = this.config.climate_off_mode || 'off';
+        }
         this.render();
     }
 
@@ -210,41 +215,38 @@ class LargeSwitchCard extends HTMLElement {
 
     handleToggle() {
         if (!this._hass || !this.config.entity) return;
-        
         const entityId = this.config.entity;
         const entity = this._hass.states[entityId];
-        
         if (!entity) {
             console.error('Entity not found:', entityId);
             return;
         }
-
         const domain = entityId.split('.')[0];
-        
-        // Handle different entity types with appropriate services
         switch (domain) {
             case 'lock':
                 if (entity.state === 'locked') {
-                    this._hass.callService('lock', 'unlock', {
-                        entity_id: entityId
-                    });
+                    this._hass.callService('lock', 'unlock', { entity_id: entityId });
                 } else {
-                    this._hass.callService('lock', 'lock', {
-                        entity_id: entityId
-                    });
+                    this._hass.callService('lock', 'lock', { entity_id: entityId });
                 }
                 break;
-                
+            case 'climate': {
+                const onMode = this.config.climate_on_mode || 'heat';
+                const offMode = this.config.climate_off_mode || 'off';
+                const isOn = entity.state === onMode;
+                this._hass.callService('climate', 'set_hvac_mode', {
+                    entity_id: entityId,
+                    hvac_mode: isOn ? offMode : onMode
+                });
+                break;
+            }
             case 'light':
             case 'switch':
             case 'input_boolean':
             default:
-                this._hass.callService('homeassistant', 'toggle', {
-                    entity_id: entityId
-                });
+                this._hass.callService('homeassistant', 'toggle', { entity_id: entityId });
                 break;
         }
-        
         console.log('Toggle action triggered for:', entityId, 'Current state:', entity.state);
     }
 
@@ -261,33 +263,26 @@ class LargeSwitchCard extends HTMLElement {
 
     updateCard() {
         if (!this._hass || !this.config.entity) return;
-
         const entityId = this.config.entity;
         const entity = this._hass.states[entityId];
         if (!entity) return;
-
         const entityName = this.shadowRoot.getElementById('entityName');
         const switchTrack = this.shadowRoot.getElementById('switchTrack');
         const switchThumb = this.shadowRoot.getElementById('switchThumb');
         const statusText = this.shadowRoot.getElementById('statusText');
         const lastChanged = this.shadowRoot.getElementById('lastChanged');
         const icon = this.shadowRoot.getElementById('icon');
-
-        // Set entity name
         entityName.textContent = this.config.name || entity.attributes.friendly_name || entityId;
-
-        // Determine if the entity is "on"
-        const isOn = entity.state === 'on' || entity.state === 'locked' || entity.state === 'true';
         const domain = entityId.split('.')[0];
-
+        let isOn = false;
         // Default colors
         let thumbColor = '#ffffff';
         let trackColor = '#e0e0e0';
         let statusColor = '';
-
         // Entity/state-specific colors
         if (domain === 'lock') {
-            if (entity.state === 'locked') {
+            isOn = entity.state === 'locked';
+            if (isOn) {
                 thumbColor = '#1db954'; // green
                 trackColor = '#b7eacb'; // light green
                 statusColor = '#1db954';
@@ -297,7 +292,8 @@ class LargeSwitchCard extends HTMLElement {
                 statusColor = '#e53935';
             }
         } else if (domain === 'switch') {
-            if (entity.state === 'on') {
+            isOn = entity.state === 'on';
+            if (isOn) {
                 thumbColor = '#ff9800'; // orange
                 trackColor = '#ffe0b2'; // light orange
                 statusColor = '#ff9800';
@@ -307,7 +303,8 @@ class LargeSwitchCard extends HTMLElement {
                 statusColor = '#757575';
             }
         } else if (domain === 'cover') {
-            if (entity.state === 'closed') {
+            isOn = entity.state !== 'closed';
+            if (!isOn) {
                 thumbColor = '#1db954'; // green
                 trackColor = '#b7eacb'; // light green
                 statusColor = '#1db954';
@@ -316,9 +313,22 @@ class LargeSwitchCard extends HTMLElement {
                 trackColor = '#bbdefb'; // light blue
                 statusColor = '#2196f3';
             }
+        } else if (domain === 'climate') {
+            const onMode = this.config.climate_on_mode || 'heat';
+            const offMode = this.config.climate_off_mode || 'off';
+            isOn = entity.state === onMode;
+            if (isOn) {
+                thumbColor = '#2196f3'; // blue
+                trackColor = '#bbdefb'; // light blue
+                statusColor = '#2196f3';
+            } else {
+                thumbColor = '#bdbdbd'; // gray
+                trackColor = '#eeeeee'; // light gray
+                statusColor = '#757575';
+            }
+        } else {
+            isOn = entity.state === 'on' || entity.state === 'locked' || entity.state === 'true';
         }
-
-        // Update switch appearance
         if (isOn) {
             switchTrack.classList.add('on');
             switchThumb.classList.add('on');
@@ -328,16 +338,11 @@ class LargeSwitchCard extends HTMLElement {
             switchThumb.classList.remove('on');
             statusText.classList.remove('on');
         }
-
-        // Set custom colors
         switchThumb.style.background = thumbColor;
         switchTrack.style.background = trackColor;
         statusText.style.color = statusColor || '';
-
-        // Set status text
         const displayState = entity.state.charAt(0).toUpperCase() + entity.state.slice(1);
         statusText.textContent = displayState;
-
         // Use Home Assistant icon system
         let entityIcon = this.config.icon || entity.attributes.icon;
         
