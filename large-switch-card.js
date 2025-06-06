@@ -264,7 +264,6 @@ class LargeSwitchCard extends HTMLElement {
 
         const entityId = this.config.entity;
         const entity = this._hass.states[entityId];
-        
         if (!entity) return;
 
         const entityName = this.shadowRoot.getElementById('entityName');
@@ -279,6 +278,45 @@ class LargeSwitchCard extends HTMLElement {
 
         // Determine if the entity is "on"
         const isOn = entity.state === 'on' || entity.state === 'locked' || entity.state === 'true';
+        const domain = entityId.split('.')[0];
+
+        // Default colors
+        let thumbColor = '#ffffff';
+        let trackColor = '#e0e0e0';
+        let statusColor = '';
+
+        // Entity/state-specific colors
+        if (domain === 'lock') {
+            if (entity.state === 'locked') {
+                thumbColor = '#1db954'; // green
+                trackColor = '#b7eacb'; // light green
+                statusColor = '#1db954';
+            } else {
+                thumbColor = '#e53935'; // red
+                trackColor = '#ffcdd2'; // light red
+                statusColor = '#e53935';
+            }
+        } else if (domain === 'switch') {
+            if (entity.state === 'on') {
+                thumbColor = '#ff9800'; // orange
+                trackColor = '#ffe0b2'; // light orange
+                statusColor = '#ff9800';
+            } else {
+                thumbColor = '#bdbdbd'; // gray
+                trackColor = '#eeeeee'; // light gray
+                statusColor = '#757575';
+            }
+        } else if (domain === 'cover') {
+            if (entity.state === 'closed') {
+                thumbColor = '#1db954'; // green
+                trackColor = '#b7eacb'; // light green
+                statusColor = '#1db954';
+            } else {
+                thumbColor = '#2196f3'; // blue
+                trackColor = '#bbdefb'; // light blue
+                statusColor = '#2196f3';
+            }
+        }
 
         // Update switch appearance
         if (isOn) {
@@ -290,6 +328,11 @@ class LargeSwitchCard extends HTMLElement {
             switchThumb.classList.remove('on');
             statusText.classList.remove('on');
         }
+
+        // Set custom colors
+        switchThumb.style.background = thumbColor;
+        switchTrack.style.background = trackColor;
+        statusText.style.color = statusColor || '';
 
         // Set status text
         const displayState = entity.state.charAt(0).toUpperCase() + entity.state.slice(1);
