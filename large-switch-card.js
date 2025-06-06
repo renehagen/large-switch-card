@@ -105,6 +105,7 @@ class LargeSwitchCard extends HTMLElement {
                     background: #ffffff !important;
                 }
                 .icon {
+                    color: #404040;
                     width: 20px;
                     height: 20px;
                     opacity: 0.7;
