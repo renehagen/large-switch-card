@@ -20,6 +20,8 @@ class LargeMomentarySwitchCard extends HTMLElement {
     }
 
     render() {
+        // Support both 'color' and 'track_color' config keys for backward compatibility
+        const trackColor = this.config.color || this.config.track_color || '#b7eacb';
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -76,8 +78,7 @@ class LargeMomentarySwitchCard extends HTMLElement {
                     width: 100%;
                     height: 100%;
                     border-radius: 10px;
-                    background: #b7eacb;
-                    /* light green */
+                    background: ${trackColor};
                     transition: background 0.3s;
                     position: relative;
                     overflow: hidden;
@@ -228,13 +229,13 @@ class LargeMomentarySwitchCard extends HTMLElement {
             const diffMins = Math.floor(diffMs / (1000 * 60));
             let timeText;
             if (diffHours > 0) {
-                timeText = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+                timeText = `${diffHours} hour${diffHours !== 1 ? 's' : ''}<br>ago`;
             } else if (diffMins > 0) {
-                timeText = `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+                timeText = `${diffMins} min${diffMins !== 1 ? 's' : ''}<br>ago`;
             } else {
-                timeText = 'Just now';
+                timeText = 'Just<br>now';
             }
-            lastChanged.textContent = timeText;
+            lastChanged.innerHTML = timeText;
         }
     }
 
