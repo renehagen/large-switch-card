@@ -101,6 +101,7 @@ class LargeMomentarySwitchCard extends HTMLElement {
                     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 }
                 .icon {
+                    color: #404040;
                     width: 20px;
                     height: 20px;
                     opacity: 0.7;
